@@ -1,0 +1,15 @@
+[workspace]
+resolver = "3"
+members = [
+    "anthropic-client", "kepo",
+    "kepoki",
+    "kepoki-anthropic", "kepoki-bedrock",
+    "kepoki-mcp",
+]
+default-members = ["kepo"]
+
+[workspace.dependencies]
+aws-sdk-bedrockruntime = "1.99.0"
+rmcp = { version = "0.3.0", features = ["base64", "client", "macros", "server", "transport-async-rw", "transport-child-process"], default-features = false }
+tokio = { version = "1.46.1", features = ["rt", "rt-multi-thread", "io-std", "tracing", "fs", "macros"] }
+tracing = "0.1.41"

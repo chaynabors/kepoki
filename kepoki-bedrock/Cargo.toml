@@ -1,0 +1,11 @@
+[package]
+name = "kepoki-bedrock"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+aws-sdk-bedrockruntime.workspace = true
+aws-smithy-types = "1.3.2"
+kepoki = { path = "../kepoki" }
+smol = "2.0.2"
+tracing.workspace = true
