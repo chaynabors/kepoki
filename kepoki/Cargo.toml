@@ -7,10 +7,15 @@ edition = "2024"
 publish = true
 license = "MIT OR Apache-2.0"
 
+[features]
+schemars = ["dep:schemars"]
+default = ["schemars"]
+
 [dependencies]
 regress = "0.10.4"
 rmcp.workspace = true
 serde = { version = "1.0.219", features = ["derive"] }
+schemars = { version = "1.0.4", optional = true }
 thiserror = "2.0.12"
 tokio.workspace = true
 tracing.workspace = true

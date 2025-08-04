@@ -5,6 +5,7 @@ use serde::Deserialize;
 use serde::Serialize;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 pub struct Agent {
     /// The version of the agent specification.
     pub spec_version: SpecVersion,
@@ -40,7 +41,26 @@ impl Agent {
     }
 }
 
+impl Default for Agent {
+    fn default() -> Self {
+        Self {
+            spec_version: SpecVersion::Latest,
+            name: "conversational-agent".to_string(),
+            description: "A simple conversational agent with no tools.".to_string(),
+            prompt: "You are a helpful assistant designed for basic knowledge tasks.".to_string(),
+            model_preferences: ModelPreferences::default(),
+            temperature: Self::default_temperature(),
+            mcp_servers: HashMap::new(),
+            tools: Vec::new(),
+            allowed_tools: Vec::new(),
+            resources: Vec::new(),
+            hooks: HashMap::new(),
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 pub enum SpecVersion {
     Latest,
     #[serde(rename = "2027-07-20")]
@@ -57,6 +77,7 @@ impl AsRef<str> for SpecVersion {
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 pub struct ModelPreferences {
     /// When a client supports multiple families of models such as gpt or claude,
     /// this is the preferred family to use.
@@ -66,6 +87,7 @@ pub struct ModelPreferences {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 pub enum ModelMetric {
     Quality,
     Speed,
@@ -77,12 +99,14 @@ pub enum ModelMetric {
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 pub enum McpServer {
     Local(LocalMcpServer),
     Remote(RemoteMcpServer),
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 pub struct LocalMcpServer {
     pub command: String,
     pub args: Vec<String>,
@@ -101,11 +125,13 @@ impl Hash for LocalMcpServer {
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 pub struct RemoteMcpServer {
     pub url: String,
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 pub struct ToolName {
     namespace: String,
     name: String,
@@ -148,9 +174,11 @@ impl Serialize for ToolName {
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 pub enum HookTrigger {}
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 pub struct Hook {
     pub name: String,
     pub description: String,

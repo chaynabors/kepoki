@@ -7,3 +7,6 @@ edition = "2024"
 anthropoki = { path = "../anthropoki" }
 kepoki = { path = "../kepoki" }
 smol = "2.0.2"
+
+[dev-dependencies]
+tokio.workspace = true

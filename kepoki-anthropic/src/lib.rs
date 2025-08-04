@@ -19,10 +19,14 @@ impl MessageStream for AnthropicMessageStream {
                     kepoki::backend::MessagesResponseEvent::Ping
                 }
                 anthropoki::MessagesResponseEvent::MessageStart { message } => {
-                    kepoki::backend::MessagesResponseEvent::MessageStart(message.into())
+                    kepoki::backend::MessagesResponseEvent::MessageStart(reverse_convert_message(
+                        message,
+                    ))
                 }
                 anthropoki::MessagesResponseEvent::MessageDelta { delta } => {
-                    kepoki::backend::MessagesResponseEvent::MessageDelta(delta.into())
+                    kepoki::backend::MessagesResponseEvent::MessageDelta(
+                        reverse_convert_message_delta(delta),
+                    )
                 }
                 anthropoki::MessagesResponseEvent::MessageStop => {
                     kepoki::backend::MessagesResponseEvent::MessageStop
@@ -39,10 +43,13 @@ impl MessageStream for AnthropicMessageStream {
                 anthropoki::MessagesResponseEvent::ContentBlockDelta { index, delta } => {
                     kepoki::backend::MessagesResponseEvent::ContentBlockDelta(match delta {
                         anthropoki::ContentBlockDelta::TextDelta { text } => {
-                            kepoki::backend::ContentBlockDelta::Text { id, text }
+                            kepoki::backend::ContentBlockDelta::Text { index, text }
                         }
                         anthropoki::ContentBlockDelta::InputJsonDelta { partial_json } => {
-                            kepoki::backend::ContentBlockDelta::InputJson { id, partial_json }
+                            kepoki::backend::ContentBlockDelta::InputJson {
+                                index,
+                                partial_json,
+                            }
                         }
                     })
                 }
@@ -66,6 +73,17 @@ pub struct AnthropicBackend {
     client: AnthropicClient,
 }
 
+impl AnthropicBackend {
+    pub fn new(api_key: String, version: ApiVersion, betas: Option<Vec<String>>) -> Self {
+        Self {
+            betas,
+            version,
+            api_key,
+            client: AnthropicClient::new(),
+        }
+    }
+}
+
 impl kepoki::backend::Backend for AnthropicBackend {
     type Model = Model;
     type MessagesEventStream = AnthropicMessageStream;
@@ -74,6 +92,7 @@ impl kepoki::backend::Backend for AnthropicBackend {
         &self,
         request: kepoki::backend::MessagesRequest<Self>,
     ) -> Result<Self::MessagesEventStream, KepokiError> {
+        eprintln!("gello");
         Ok(AnthropicMessageStream(
             smol::block_on(
                 self.client.messages_stream(&anthropoki::MessagesRequest {
@@ -110,6 +129,16 @@ fn convert_message(message: kepoki::backend::InputMessage) -> anthropoki::InputM
     }
 }
 
+fn reverse_convert_message(message: anthropoki::Message) -> kepoki::backend::Message {
+    kepoki::backend::Message {
+        id: message.id,
+        content: reverse_convert_content(message.content),
+        stop_reason: message.stop_reason.map(reverse_convert_stop_reason),
+        stop_sequence: message.stop_sequence,
+        usage: None,
+    }
+}
+
 fn convert_role(role: kepoki::backend::Role) -> anthropoki::Role {
     match role {
         kepoki::backend::Role::User => anthropoki::Role::User,
@@ -119,6 +148,16 @@ fn convert_role(role: kepoki::backend::Role) -> anthropoki::Role {
 
 fn convert_content(content: Vec<kepoki::backend::ContentBlock>) -> anthropoki::Content {
     anthropoki::Content::Blocks(content.into_iter().map(convert_content_block).collect())
+}
+
+fn reverse_convert_content(content: anthropoki::Content) -> Vec<kepoki::backend::ContentBlock> {
+    match content {
+        anthropoki::Content::Blocks(blocks) => blocks
+            .into_iter()
+            .map(reverse_convert_content_block)
+            .collect(),
+        _ => todo!("Unsupported content type: {:?}", content),
+    }
 }
 
 fn convert_content_block(block: kepoki::backend::ContentBlock) -> anthropoki::ContentBlock {
@@ -285,5 +324,60 @@ fn convert_tool<'a>(tool: kepoki::backend::Tool<'a>) -> anthropoki::Tool<'a> {
         description: tool.description,
         input_schema: tool.input_schema,
         cache_control: None,
+    }
+}
+
+fn reverse_convert_stop_reason(stop_reason: anthropoki::StopReason) -> kepoki::backend::StopReason {
+    match stop_reason {
+        anthropoki::StopReason::EndTurn => kepoki::backend::StopReason::EndTurn,
+        anthropoki::StopReason::MaxTokens => kepoki::backend::StopReason::MaxTokens,
+        anthropoki::StopReason::StopSequence => kepoki::backend::StopReason::StopSequence,
+        anthropoki::StopReason::ToolUse => kepoki::backend::StopReason::ToolUse,
+        anthropoki::StopReason::PauseTurn => kepoki::backend::StopReason::PauseTurn,
+        anthropoki::StopReason::Refusal => kepoki::backend::StopReason::Refusal,
+    }
+}
+
+fn reverse_convert_message_delta(delta: anthropoki::MessageDelta) -> kepoki::backend::MessageDelta {
+    kepoki::backend::MessageDelta {
+        stop_reason: delta.stop_reason.map(reverse_convert_stop_reason),
+        stop_sequence: delta.stop_sequence,
+        usage: None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[ignore]
+    #[tokio::test]
+    async fn test_message_stream() {
+        let backend = AnthropicBackend::new(
+            "test_api_key".to_string(),
+            ApiVersion::Latest,
+            Some(vec!["beta_feature".to_string()]),
+        );
+
+        let mut runtime = kepoki::runtime::Runtime::new();
+
+        let agent = runtime.spawn_agent(
+            backend,
+            Model::ClaudeHaiku3_5,
+            kepoki::agent::Agent::default(),
+        );
+
+        // runtime
+        //     .send(&agent, kepoki::runtime::agent::AgentCommand::Exit)
+        //     .unwrap();
+
+        let time = std::time::Instant::now();
+        let timer = std::time::Duration::from_secs(5);
+        while let Ok(event) = runtime.recv().await {
+            eprintln!("Received event: {:?}", event);
+            if time.elapsed() > timer {
+                break;
+            }
+        }
     }
 }

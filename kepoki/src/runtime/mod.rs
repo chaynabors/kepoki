@@ -19,9 +19,10 @@ use crate::runtime::agent::AgentEvent;
 use crate::runtime::agent::AgentState;
 
 #[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 pub struct AgentHandle {
     name: String,
-    uuid: Uuid,
+    uuid: [u8; 16],
 }
 
 impl Display for AgentHandle {
@@ -58,7 +59,7 @@ impl Runtime {
     ) -> AgentHandle {
         let agent_handle = AgentHandle {
             name: agent.name.clone(),
-            uuid: Uuid::new_v4(),
+            uuid: Uuid::new_v4().into_bytes(),
         };
 
         let (command_emitter, command_receiver) = tokio::sync::mpsc::unbounded_channel();

@@ -22,6 +22,7 @@ use crate::error::KepokiError;
 use crate::runtime::AgentHandle;
 
 #[derive(Debug, Deserialize, Serialize)]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 pub enum AgentCommand {
     Exit,
     Pause,
@@ -31,6 +32,7 @@ pub enum AgentCommand {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 pub enum AgentEvent {
     Ping,
     MessageStart(Message),
@@ -59,6 +61,7 @@ impl From<MessagesResponseEvent> for AgentEvent {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 pub struct AgentState {
     pub definition: crate::agent::Agent,
     pub messages: VecDeque<InputMessage>,
@@ -79,7 +82,7 @@ impl<B: Backend> Agent<B> {
         let messages = vec![InputMessage {
             role: Role::User,
             content: vec![ContentBlock::Text {
-                text: "".to_string(),
+                text: "Starting...".to_string(),
             }],
         }];
 
@@ -105,17 +108,20 @@ impl<B: Backend> Agent<B> {
             }
 
             // Continue conversation
-            let mut stream = self.backend.messages(MessagesRequest {
-                model: self.model.clone(),
-                messages: messages.clone(),
-                max_tokens: 8192,
-                system: Some(Cow::Borrowed(&self.state.definition.prompt)),
-                temperature: Some(self.state.definition.temperature),
-                tool_choice: None,
-                tools: None,
-            })?;
+            let mut stream = self
+                .backend
+                .messages(MessagesRequest {
+                    model: self.model.clone(),
+                    messages: messages.clone(),
+                    max_tokens: 8192,
+                    system: Some(Cow::Borrowed(&self.state.definition.prompt)),
+                    temperature: Some(self.state.definition.temperature),
+                    tool_choice: None,
+                    tools: None,
+                })
+                .unwrap();
 
-            while let Some(event) = stream.recv()? {
+            while let Some(event) = stream.recv().unwrap() {
                 let event = AgentEvent::from(event);
                 self.event_emitter
                     .send(event)

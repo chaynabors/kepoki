@@ -25,8 +25,8 @@ use aws_sdk_bedrockruntime::types::error::ConverseStreamOutputError;
 use aws_smithy_types::Blob;
 use aws_smithy_types::Document;
 use kepoki::backend::Backend;
+use kepoki::backend::Message;
 use kepoki::backend::MessageStream;
-use kepoki::backend::MessagesResponseEvent;
 use kepoki::error::KepokiError;
 
 pub struct BedrockMessagesEventStream {
@@ -34,7 +34,7 @@ pub struct BedrockMessagesEventStream {
 }
 
 impl MessageStream for BedrockMessagesEventStream {
-    fn recv(&mut self) -> Result<Option<MessagesResponseEvent>, KepokiError> {
+    fn recv(&mut self) -> Result<Option<Message>, KepokiError> {
         loop {
             let Some(output) = smol::block_on(self.stream.recv())
                 .map_err(|err| KepokiError::CustomError(Box::new(err)))?
@@ -45,23 +45,21 @@ impl MessageStream for BedrockMessagesEventStream {
             return Ok(Some(match output {
                 ConverseStreamOutput::ContentBlockDelta(content_block_delta_event) => {
                     if let Some(content_block_delta_event) = content_block_delta_event.delta {
-                        MessagesResponseEvent::ContentBlockDelta(content_block_delta_event)
+                        Message::ContentBlockDelta(content_block_delta_event)
                     } else {
                         continue;
                     }
-                    MessagesResponseEvent::ContentBlockDelta(content_block_delta_event)
+                    Message::ContentBlockDelta(content_block_delta_event)
                 }
                 ConverseStreamOutput::ContentBlockStart(content_block_start_event) => {
                     if let Some(content_block_start_event) = content_block_start_event.start {
                         match content_block_start_event {
                             ContentBlockStart::ToolUse(tool_use_block_start) => {
-                                MessagesResponseEvent::ContentBlockStart(
-                                    kepoki::backend::ContentBlock::ToolUse {
-                                        id: tool_use_block_start.tool_use_id,
-                                        name: tool_use_block_start.name,
-                                        input: String::new(),
-                                    },
-                                )
+                                Message::ContentBlockStart(kepoki::backend::ContentBlock::ToolUse {
+                                    id: tool_use_block_start.tool_use_id,
+                                    name: tool_use_block_start.name,
+                                    input: String::new(),
+                                })
                             }
                             _ => todo!(),
                         }
