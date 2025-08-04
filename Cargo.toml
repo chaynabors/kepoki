@@ -1,12 +1,11 @@
 [workspace]
 resolver = "3"
 members = [
-    "anthropic-client", "kepo",
+    "anthropoki",
     "kepoki",
     "kepoki-anthropic", "kepoki-bedrock",
     "kepoki-mcp",
 ]
-default-members = ["kepo"]
 
 [workspace.dependencies]
 aws-sdk-bedrockruntime = "1.99.0"

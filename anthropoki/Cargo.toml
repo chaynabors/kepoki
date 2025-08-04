@@ -1,5 +1,5 @@
 [package]
-name = "anthropic-client"
+name = "anthropoki"
 description = "Anthropic client for Rust. Supports streaming and non-streaming requests."
 authors = ["Chay Nabors (chaynabors@gmail.com)"]
 version = "0.1.0"

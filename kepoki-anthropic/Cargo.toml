@@ -4,6 +4,6 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-anthropic-client = { path = "../anthropic-client" }
+anthropoki = { path = "../anthropoki" }
 kepoki = { path = "../kepoki" }
 smol = "2.0.2"

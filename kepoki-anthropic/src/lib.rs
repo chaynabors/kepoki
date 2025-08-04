@@ -1,33 +1,33 @@
 use std::borrow::Cow;
 
-use anthropic_client::AnthropicClient;
-use anthropic_client::ApiVersion;
-use anthropic_client::MessagesRequestBody;
-use anthropic_client::Model;
-use anthropic_client::ToolChoice as AnthropicToolChoice;
+use anthropoki::AnthropicClient;
+use anthropoki::ApiVersion;
+use anthropoki::MessagesRequestBody;
+use anthropoki::Model;
+use anthropoki::ToolChoice as AnthropicToolChoice;
 use kepoki::backend::MessageStream;
 use kepoki::backend::ToolChoice;
 use kepoki::error::KepokiError;
 
-pub struct AnthropicMessageStream(anthropic_client::MessageStream);
+pub struct AnthropicMessageStream(anthropoki::MessageStream);
 
 impl MessageStream for AnthropicMessageStream {
     fn recv(&mut self) -> Result<Option<kepoki::backend::MessagesResponseEvent>, KepokiError> {
         match smol::block_on(self.0.recv()) {
             Ok(Some(event)) => Ok(Some(match event {
-                anthropic_client::MessagesResponseEvent::Ping => {
+                anthropoki::MessagesResponseEvent::Ping => {
                     kepoki::backend::MessagesResponseEvent::Ping
                 }
-                anthropic_client::MessagesResponseEvent::MessageStart { message } => {
+                anthropoki::MessagesResponseEvent::MessageStart { message } => {
                     kepoki::backend::MessagesResponseEvent::MessageStart(message.into())
                 }
-                anthropic_client::MessagesResponseEvent::MessageDelta { delta } => {
+                anthropoki::MessagesResponseEvent::MessageDelta { delta } => {
                     kepoki::backend::MessagesResponseEvent::MessageDelta(delta.into())
                 }
-                anthropic_client::MessagesResponseEvent::MessageStop => {
+                anthropoki::MessagesResponseEvent::MessageStop => {
                     kepoki::backend::MessagesResponseEvent::MessageStop
                 }
-                anthropic_client::MessagesResponseEvent::ContentBlockStart {
+                anthropoki::MessagesResponseEvent::ContentBlockStart {
                     index,
                     content_block,
                 } => kepoki::backend::MessagesResponseEvent::ContentBlockStart(
@@ -36,17 +36,17 @@ impl MessageStream for AnthropicMessageStream {
                         content_block: reverse_convert_content_block(content_block),
                     },
                 ),
-                anthropic_client::MessagesResponseEvent::ContentBlockDelta { index, delta } => {
+                anthropoki::MessagesResponseEvent::ContentBlockDelta { index, delta } => {
                     kepoki::backend::MessagesResponseEvent::ContentBlockDelta(match delta {
-                        anthropic_client::ContentBlockDelta::TextDelta { text } => {
+                        anthropoki::ContentBlockDelta::TextDelta { text } => {
                             kepoki::backend::ContentBlockDelta::Text { id, text }
                         }
-                        anthropic_client::ContentBlockDelta::InputJsonDelta { partial_json } => {
+                        anthropoki::ContentBlockDelta::InputJsonDelta { partial_json } => {
                             kepoki::backend::ContentBlockDelta::InputJson { id, partial_json }
                         }
                     })
                 }
-                anthropic_client::MessagesResponseEvent::ContentBlockStop { index } => {
+                anthropoki::MessagesResponseEvent::ContentBlockStop { index } => {
                     kepoki::backend::MessagesResponseEvent::ContentBlockStop(
                         kepoki::backend::ContentBlockStop { index },
                     )
@@ -76,65 +76,64 @@ impl kepoki::backend::Backend for AnthropicBackend {
     ) -> Result<Self::MessagesEventStream, KepokiError> {
         Ok(AnthropicMessageStream(
             smol::block_on(
-                self.client
-                    .messages_stream(&anthropic_client::MessagesRequest {
-                        anthropic_beta: self
-                            .betas
-                            .as_ref()
-                            .map(|b| b.iter().map(|s| Cow::Borrowed(s.as_str())).collect()),
-                        anthropic_version: self.version,
-                        x_api_key: self.api_key.clone().into(),
-                        body: MessagesRequestBody {
-                            model: request.model,
-                            messages: request.messages.into_iter().map(convert_message).collect(),
-                            max_tokens: request.max_tokens,
-                            stream: true,
-                            system: request.system,
-                            temperature: request.temperature,
-                            tool_choice: request.tool_choice.map(convert_tool_choice),
-                            tools: request
-                                .tools
-                                .map(|tools| tools.into_iter().map(convert_tool).collect()),
-                            ..Default::default()
-                        },
-                    }),
+                self.client.messages_stream(&anthropoki::MessagesRequest {
+                    anthropic_beta: self
+                        .betas
+                        .as_ref()
+                        .map(|b| b.iter().map(|s| Cow::Borrowed(s.as_str())).collect()),
+                    anthropic_version: self.version,
+                    x_api_key: self.api_key.clone().into(),
+                    body: MessagesRequestBody {
+                        model: request.model,
+                        messages: request.messages.into_iter().map(convert_message).collect(),
+                        max_tokens: request.max_tokens,
+                        stream: true,
+                        system: request.system,
+                        temperature: request.temperature,
+                        tool_choice: request.tool_choice.map(convert_tool_choice),
+                        tools: request
+                            .tools
+                            .map(|tools| tools.into_iter().map(convert_tool).collect()),
+                        ..Default::default()
+                    },
+                }),
             )
             .map_err(|err| KepokiError::CustomError(Box::new(err)))?,
         ))
     }
 }
 
-fn convert_message(message: kepoki::backend::InputMessage) -> anthropic_client::InputMessage {
-    anthropic_client::InputMessage {
+fn convert_message(message: kepoki::backend::InputMessage) -> anthropoki::InputMessage {
+    anthropoki::InputMessage {
         role: convert_role(message.role),
         content: convert_content(message.content),
     }
 }
 
-fn convert_role(role: kepoki::backend::Role) -> anthropic_client::Role {
+fn convert_role(role: kepoki::backend::Role) -> anthropoki::Role {
     match role {
-        kepoki::backend::Role::User => anthropic_client::Role::User,
-        kepoki::backend::Role::Assistant => anthropic_client::Role::Assistant,
+        kepoki::backend::Role::User => anthropoki::Role::User,
+        kepoki::backend::Role::Assistant => anthropoki::Role::Assistant,
     }
 }
 
-fn convert_content(content: Vec<kepoki::backend::ContentBlock>) -> anthropic_client::Content {
-    anthropic_client::Content::Blocks(content.into_iter().map(convert_content_block).collect())
+fn convert_content(content: Vec<kepoki::backend::ContentBlock>) -> anthropoki::Content {
+    anthropoki::Content::Blocks(content.into_iter().map(convert_content_block).collect())
 }
 
-fn convert_content_block(block: kepoki::backend::ContentBlock) -> anthropic_client::ContentBlock {
+fn convert_content_block(block: kepoki::backend::ContentBlock) -> anthropoki::ContentBlock {
     match block {
-        kepoki::backend::ContentBlock::Text { text } => anthropic_client::ContentBlock::Text {
+        kepoki::backend::ContentBlock::Text { text } => anthropoki::ContentBlock::Text {
             text,
             cache_control: None,
             citations: None,
         },
-        kepoki::backend::ContentBlock::Image { source } => anthropic_client::ContentBlock::Image {
+        kepoki::backend::ContentBlock::Image { source } => anthropoki::ContentBlock::Image {
             source: convert_source(source),
             cache_control: None,
         },
         kepoki::backend::ContentBlock::ToolUse { id, input, name } => {
-            anthropic_client::ContentBlock::ToolUse {
+            anthropoki::ContentBlock::ToolUse {
                 id,
                 input,
                 name,
@@ -145,7 +144,7 @@ fn convert_content_block(block: kepoki::backend::ContentBlock) -> anthropic_clie
             tool_use_id,
             content,
             is_error,
-        } => anthropic_client::ContentBlock::ToolResult {
+        } => anthropoki::ContentBlock::ToolResult {
             tool_use_id,
             content: content.map(|c| {
                 c.into_iter()
@@ -158,22 +157,16 @@ fn convert_content_block(block: kepoki::backend::ContentBlock) -> anthropic_clie
     }
 }
 
-fn reverse_convert_content_block(
-    block: anthropic_client::ContentBlock,
-) -> kepoki::backend::ContentBlock {
+fn reverse_convert_content_block(block: anthropoki::ContentBlock) -> kepoki::backend::ContentBlock {
     match block {
-        anthropic_client::ContentBlock::Text { text, .. } => {
-            kepoki::backend::ContentBlock::Text { text }
-        }
-        anthropic_client::ContentBlock::Image { source, .. } => {
-            kepoki::backend::ContentBlock::Image {
-                source: reverse_convert_source(source),
-            }
-        }
-        anthropic_client::ContentBlock::ToolUse {
+        anthropoki::ContentBlock::Text { text, .. } => kepoki::backend::ContentBlock::Text { text },
+        anthropoki::ContentBlock::Image { source, .. } => kepoki::backend::ContentBlock::Image {
+            source: reverse_convert_source(source),
+        },
+        anthropoki::ContentBlock::ToolUse {
             id, input, name, ..
         } => kepoki::backend::ContentBlock::ToolUse { id, input, name },
-        anthropic_client::ContentBlock::ToolResult {
+        anthropoki::ContentBlock::ToolResult {
             tool_use_id,
             content,
             is_error,
@@ -191,10 +184,10 @@ fn reverse_convert_content_block(
     }
 }
 
-fn convert_source(source: kepoki::backend::ImageSource) -> anthropic_client::ImageSource {
+fn convert_source(source: kepoki::backend::ImageSource) -> anthropoki::ImageSource {
     match source {
         kepoki::backend::ImageSource::Base64 { data, media_type } => {
-            anthropic_client::ImageSource::Base64 {
+            anthropoki::ImageSource::Base64 {
                 data,
                 media_type: convert_media_type(media_type),
             }
@@ -202,9 +195,9 @@ fn convert_source(source: kepoki::backend::ImageSource) -> anthropic_client::Ima
     }
 }
 
-fn reverse_convert_source(source: anthropic_client::ImageSource) -> kepoki::backend::ImageSource {
+fn reverse_convert_source(source: anthropoki::ImageSource) -> kepoki::backend::ImageSource {
     match source {
-        anthropic_client::ImageSource::Base64 { data, media_type } => {
+        anthropoki::ImageSource::Base64 { data, media_type } => {
             kepoki::backend::ImageSource::Base64 {
                 data,
                 media_type: reverse_convert_media_type(media_type),
@@ -214,37 +207,35 @@ fn reverse_convert_source(source: anthropic_client::ImageSource) -> kepoki::back
     }
 }
 
-fn convert_media_type(
-    media_type: kepoki::backend::ImageMediaType,
-) -> anthropic_client::ImageMediaType {
+fn convert_media_type(media_type: kepoki::backend::ImageMediaType) -> anthropoki::ImageMediaType {
     match media_type {
-        kepoki::backend::ImageMediaType::Jpeg => anthropic_client::ImageMediaType::Jpeg,
-        kepoki::backend::ImageMediaType::Png => anthropic_client::ImageMediaType::Png,
-        kepoki::backend::ImageMediaType::Gif => anthropic_client::ImageMediaType::Gif,
-        kepoki::backend::ImageMediaType::Webp => anthropic_client::ImageMediaType::Webp,
+        kepoki::backend::ImageMediaType::Jpeg => anthropoki::ImageMediaType::Jpeg,
+        kepoki::backend::ImageMediaType::Png => anthropoki::ImageMediaType::Png,
+        kepoki::backend::ImageMediaType::Gif => anthropoki::ImageMediaType::Gif,
+        kepoki::backend::ImageMediaType::Webp => anthropoki::ImageMediaType::Webp,
     }
 }
 
 fn reverse_convert_media_type(
-    media_type: anthropic_client::ImageMediaType,
+    media_type: anthropoki::ImageMediaType,
 ) -> kepoki::backend::ImageMediaType {
     match media_type {
-        anthropic_client::ImageMediaType::Jpeg => kepoki::backend::ImageMediaType::Jpeg,
-        anthropic_client::ImageMediaType::Png => kepoki::backend::ImageMediaType::Png,
-        anthropic_client::ImageMediaType::Gif => kepoki::backend::ImageMediaType::Gif,
-        anthropic_client::ImageMediaType::Webp => kepoki::backend::ImageMediaType::Webp,
+        anthropoki::ImageMediaType::Jpeg => kepoki::backend::ImageMediaType::Jpeg,
+        anthropoki::ImageMediaType::Png => kepoki::backend::ImageMediaType::Png,
+        anthropoki::ImageMediaType::Gif => kepoki::backend::ImageMediaType::Gif,
+        anthropoki::ImageMediaType::Webp => kepoki::backend::ImageMediaType::Webp,
     }
 }
 
 fn convert_tool_result_content_block(
     block: kepoki::backend::ToolResultContentBlock,
-) -> anthropic_client::ToolResultContentBlock {
+) -> anthropoki::ToolResultContentBlock {
     match block {
         kepoki::backend::ToolResultContentBlock::Text { text } => {
-            anthropic_client::ToolResultContentBlock::Text { text }
+            anthropoki::ToolResultContentBlock::Text { text }
         }
         kepoki::backend::ToolResultContentBlock::Image { source } => {
-            anthropic_client::ToolResultContentBlock::Image {
+            anthropoki::ToolResultContentBlock::Image {
                 source: convert_source(source),
             }
         }
@@ -252,13 +243,13 @@ fn convert_tool_result_content_block(
 }
 
 fn reverse_convert_tool_result_content_block(
-    block: anthropic_client::ToolResultContentBlock,
+    block: anthropoki::ToolResultContentBlock,
 ) -> kepoki::backend::ToolResultContentBlock {
     match block {
-        anthropic_client::ToolResultContentBlock::Text { text } => {
+        anthropoki::ToolResultContentBlock::Text { text } => {
             kepoki::backend::ToolResultContentBlock::Text { text }
         }
-        anthropic_client::ToolResultContentBlock::Image { source } => {
+        anthropoki::ToolResultContentBlock::Image { source } => {
             kepoki::backend::ToolResultContentBlock::Image {
                 source: reverse_convert_source(source),
             }
@@ -288,8 +279,8 @@ fn convert_tool_choice(tool_choice: ToolChoice) -> AnthropicToolChoice {
     }
 }
 
-fn convert_tool<'a>(tool: kepoki::backend::Tool<'a>) -> anthropic_client::Tool<'a> {
-    anthropic_client::Tool {
+fn convert_tool<'a>(tool: kepoki::backend::Tool<'a>) -> anthropoki::Tool<'a> {
+    anthropoki::Tool {
         name: tool.name,
         description: tool.description,
         input_schema: tool.input_schema,
