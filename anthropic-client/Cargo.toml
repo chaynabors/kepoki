@@ -1,8 +1,11 @@
 [package]
 name = "anthropic-client"
+description = "Anthropic client for Rust. Supports streaming and non-streaming requests."
+authors = ["Chay Nabors (chaynabors@gmail.com)"]
 version = "0.1.0"
 edition = "2024"
 publish = true
+license = "MIT OR Apache-2.0"
 
 [dependencies]
 bytes = "1.10.1"
