@@ -15,7 +15,7 @@ pub struct Tool<'a> {
     pub description: Option<Cow<'a, str>>,
 }
 
-#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 pub enum Role {
     User,

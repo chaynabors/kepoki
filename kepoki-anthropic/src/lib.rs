@@ -13,7 +13,7 @@ pub struct AnthropicMessageStream(anthropoki::MessageStream);
 
 impl MessageStream for AnthropicMessageStream {
     fn recv(&mut self) -> Result<Option<kepoki::backend::MessagesResponseEvent>, KepokiError> {
-        match smol::block_on(self.0.recv()) {
+        match futures::executor::block_on(self.0.recv()) {
             Ok(Some(event)) => Ok(Some(match event {
                 anthropoki::MessagesResponseEvent::Ping => {
                     kepoki::backend::MessagesResponseEvent::Ping
@@ -92,9 +92,8 @@ impl kepoki::backend::Backend for AnthropicBackend {
         &self,
         request: kepoki::backend::MessagesRequest<Self>,
     ) -> Result<Self::MessagesEventStream, KepokiError> {
-        eprintln!("gello");
         Ok(AnthropicMessageStream(
-            smol::block_on(
+            futures::executor::block_on(
                 self.client.messages_stream(&anthropoki::MessagesRequest {
                     anthropic_beta: self
                         .betas
@@ -117,7 +116,8 @@ impl kepoki::backend::Backend for AnthropicBackend {
                     },
                 }),
             )
-            .map_err(|err| KepokiError::CustomError(Box::new(err)))?,
+            .map_err(|err| KepokiError::CustomError(Box::new(err)))
+            .unwrap(),
         ))
     }
 }
@@ -353,31 +353,19 @@ mod tests {
     #[ignore]
     #[tokio::test]
     async fn test_message_stream() {
-        let backend = AnthropicBackend::new(
-            "test_api_key".to_string(),
-            ApiVersion::Latest,
-            Some(vec!["beta_feature".to_string()]),
-        );
+        tracing_subscriber::fmt::init();
 
+        let api_key = std::env::var("ANTHROPIC_API_KEY").unwrap();
+        let backend = AnthropicBackend::new(api_key, ApiVersion::Latest, None);
         let mut runtime = kepoki::runtime::Runtime::new();
-
         let agent = runtime.spawn_agent(
             backend,
             Model::ClaudeHaiku3_5,
             kepoki::agent::Agent::default(),
         );
 
-        // runtime
-        //     .send(&agent, kepoki::runtime::agent::AgentCommand::Exit)
-        //     .unwrap();
-
-        let time = std::time::Instant::now();
-        let timer = std::time::Duration::from_secs(5);
         while let Ok(event) = runtime.recv().await {
-            eprintln!("Received event: {:?}", event);
-            if time.elapsed() > timer {
-                break;
-            }
+            tracing::info!("Received event: {:?}", event);
         }
     }
 }

@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::collections::HashMap;
 use std::collections::VecDeque;
 use std::process::ExitCode;
 
@@ -38,6 +39,8 @@ pub enum AgentEvent {
     MessageStart(Message),
     MessageDelta(MessageDelta),
     MessageStop,
+    /// Represents a message that has been fully received and processed.
+    Message(Message),
     ContentBlockStart(ContentBlockStart),
     ContentBlockDelta(ContentBlockDelta),
     ContentBlockStop(ContentBlockStop),
@@ -68,6 +71,21 @@ pub struct AgentState {
     pub paused: bool,
 }
 
+impl Default for AgentState {
+    fn default() -> Self {
+        Self {
+            definition: crate::agent::Agent::default(),
+            messages: VecDeque::from_iter([InputMessage {
+                role: Role::User,
+                content: vec![ContentBlock::Text {
+                    text: "You are a helpful assistant.".to_string(),
+                }],
+            }]),
+            paused: false,
+        }
+    }
+}
+
 pub struct Agent<B: Backend> {
     pub backend: B,
     pub model: B::Model,
@@ -78,14 +96,7 @@ pub struct Agent<B: Backend> {
 }
 
 impl<B: Backend> Agent<B> {
-    pub async fn run(mut self) -> Result<ExitCode, KepokiError> {
-        let messages = vec![InputMessage {
-            role: Role::User,
-            content: vec![ContentBlock::Text {
-                text: "Starting...".to_string(),
-            }],
-        }];
-
+    pub fn run(mut self) -> Result<ExitCode, KepokiError> {
         loop {
             // Handle incoming commands
             loop {
@@ -96,9 +107,13 @@ impl<B: Backend> Agent<B> {
                         }
                     }
                     Err(TryRecvError::Empty) => {
-                        if !self.state.paused {
-                            break;
+                        if let Some(message) = self.state.messages.back() {
+                            if message.role == Role::User && !self.state.paused {
+                                break;
+                            }
                         }
+
+                        std::thread::sleep(std::time::Duration::from_millis(100));
                     }
                     Err(TryRecvError::Disconnected) => {
                         tracing::info!("Agent channel disconnected, shutting down thread.");
@@ -108,24 +123,112 @@ impl<B: Backend> Agent<B> {
             }
 
             // Continue conversation
-            let mut stream = self
-                .backend
-                .messages(MessagesRequest {
-                    model: self.model.clone(),
-                    messages: messages.clone(),
-                    max_tokens: 8192,
-                    system: Some(Cow::Borrowed(&self.state.definition.prompt)),
-                    temperature: Some(self.state.definition.temperature),
-                    tool_choice: None,
-                    tools: None,
-                })
-                .unwrap();
+            let mut stream = self.backend.messages(MessagesRequest {
+                model: self.model.clone(),
+                messages: self.state.messages.clone().into(),
+                max_tokens: 8192,
+                system: Some(Cow::Borrowed(&self.state.definition.prompt)),
+                temperature: Some(self.state.definition.temperature),
+                tool_choice: None,
+                tools: None,
+            })?;
 
-            while let Some(event) = stream.recv().unwrap() {
-                let event = AgentEvent::from(event);
+            let mut message = None;
+            let mut blocks = HashMap::new();
+            while let Some(event) = stream.recv()? {
                 self.event_emitter
-                    .send(event)
+                    .send(AgentEvent::from(event.clone()))
                     .map_err(|_| KepokiError::EventReceiverClosed(self.handle.clone()))?;
+
+                match event {
+                    MessagesResponseEvent::Ping => (),
+                    MessagesResponseEvent::MessageStart(start) => {
+                        if message.is_some() {
+                            return Err(KepokiError::UnexpectedEvent(self.handle.clone()));
+                        }
+
+                        message = Some(start);
+                    }
+                    MessagesResponseEvent::MessageDelta(delta) => {
+                        let message = message
+                            .as_mut()
+                            .ok_or_else(|| KepokiError::UnexpectedEvent(self.handle.clone()))?;
+
+                        if let Some(stop_reason) = delta.stop_reason {
+                            message.stop_reason = Some(stop_reason);
+                        }
+
+                        if let Some(stop_sequence) = delta.stop_sequence {
+                            message.stop_sequence = Some(stop_sequence);
+                        }
+
+                        if let Some(usage) = delta.usage {
+                            message.usage = Some(usage);
+                        }
+                    }
+                    MessagesResponseEvent::MessageStop => {
+                        if message.is_none() {
+                            return Err(KepokiError::UnexpectedEvent(self.handle.clone()));
+                        }
+                    }
+                    MessagesResponseEvent::ContentBlockStart(block) => {
+                        if blocks.insert(block.index, block.content_block).is_some() {
+                            return Err(KepokiError::UnexpectedEvent(self.handle.clone()));
+                        }
+                    }
+                    MessagesResponseEvent::ContentBlockDelta(delta) => match delta {
+                        ContentBlockDelta::Text { index, text } => {
+                            let Some(block) = blocks.get_mut(&index) else {
+                                return Err(KepokiError::UnexpectedEvent(self.handle.clone()));
+                            };
+
+                            match block {
+                                ContentBlock::Text { text: block_text } => {
+                                    block_text.push_str(&text);
+                                }
+                                _ => {
+                                    return Err(KepokiError::UnexpectedEvent(self.handle.clone()));
+                                }
+                            }
+                        }
+                        ContentBlockDelta::InputJson {
+                            index,
+                            partial_json,
+                        } => {
+                            let Some(block) = blocks.get_mut(&index) else {
+                                return Err(KepokiError::UnexpectedEvent(self.handle.clone()));
+                            };
+
+                            match block {
+                                ContentBlock::ToolUse { input, .. } => {
+                                    input.push_str(&partial_json);
+                                }
+                                _ => {
+                                    return Err(KepokiError::UnexpectedEvent(self.handle.clone()));
+                                }
+                            }
+                        }
+                    },
+                    MessagesResponseEvent::ContentBlockStop(content_block_stop) => {
+                        if blocks.contains_key(&content_block_stop.index) {
+                            blocks.remove(&content_block_stop.index);
+                        }
+                    }
+                }
+            }
+
+            match message {
+                Some(mut msg) => {
+                    msg.content = blocks.into_values().collect();
+                    self.state.messages.push_back(InputMessage {
+                        role: Role::Assistant,
+                        content: msg.content.clone(),
+                    });
+                    self.event_emitter
+                        .send(AgentEvent::Message(msg))
+                        .map_err(|_| KepokiError::EventReceiverClosed(self.handle.clone()))?;
+                }
+                None => return Err(KepokiError::NoMessageReceived(self.handle.clone())),
             }
         }
     }

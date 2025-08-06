@@ -358,7 +358,7 @@ impl Default for MessagesRequestBody<'_> {
         MessagesRequestBody {
             model: Model::ClaudeSonnet3_5,
             messages: vec![],
-            max_tokens: 1024,
+            max_tokens: 2048,
             container: None,
             mcp_servers: None,
             metadata: None,
@@ -496,7 +496,7 @@ impl MessageStream {
                 let line = String::from_utf8_lossy(&line);
                 let line = line.trim();
 
-                println!("{:?}", line);
+                tracing::error!("{:?}", line);
 
                 match lines_parsed {
                     0 => assert!(line.strip_prefix("event: ").is_some()),
@@ -567,8 +567,7 @@ impl AnthropicClient {
             .header("x-api-key", request.x_api_key.as_ref())
             .body(serde_json::to_string(&request.body)?)
             .send()
-            .await
-            .unwrap();
+            .await?;
 
         Ok(MessageStream {
             stream: Box::pin(response.bytes_stream()),
@@ -605,6 +604,8 @@ mod tests {
     #[ignore]
     #[tokio::test]
     async fn test_messages_stream() {
+        tracing_subscriber::fmt::init();
+
         let mut stream = AnthropicClient::new()
             .messages_stream(&MessagesRequest {
                 anthropic_beta: None,

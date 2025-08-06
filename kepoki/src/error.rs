@@ -1,6 +1,7 @@
 use rmcp::RmcpError;
 use thiserror::Error;
 
+use crate::backend::MessagesResponseEvent;
 use crate::runtime::AgentHandle;
 
 #[derive(Debug, Error)]
@@ -11,12 +12,16 @@ pub enum KepokiError {
     JoinFailed(#[from] tokio::task::JoinError),
     #[error("Attempted to communicate with the runtime without running agents")]
     NoRunningAgents,
-    #[error("Agent does not exist: {0:#?}")]
+    #[error("Agent does not exist: {0}")]
     AgentNotFound(AgentHandle),
-    #[error("Agent manually terminated: {0:#?}")]
+    #[error("Agent manually terminated: {0}")]
     AgentManuallyTerminated(AgentHandle),
-    #[error("Agent event receiver closed unexpectedly: {0:#?}")]
+    #[error("Agent event receiver closed unexpectedly: {0}")]
     EventReceiverClosed(AgentHandle),
+    #[error("Unexpected event received for agent {0}")]
+    UnexpectedEvent(AgentHandle),
+    #[error("No message received from backend for agent: {0}")]
+    NoMessageReceived(AgentHandle),
     #[error(transparent)]
     CustomError(Box<dyn std::error::Error + Send + Sync>),
 }

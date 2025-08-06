@@ -7,6 +7,7 @@ use std::process::ExitCode;
 
 use serde::Deserialize;
 use serde::Serialize;
+use tokio::select;
 use tokio::sync::mpsc::UnboundedReceiver;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::task::JoinSet;
@@ -65,21 +66,18 @@ impl Runtime {
         let (command_emitter, command_receiver) = tokio::sync::mpsc::unbounded_channel();
         let (event_emitter, mut event_receiver) = tokio::sync::mpsc::unbounded_channel();
 
-        let join_handle = tokio::spawn(
+        let handle = agent_handle.clone();
+        let join_handle = tokio::runtime::Handle::current().spawn_blocking(|| {
             agent::Agent {
                 backend,
                 model,
-                handle: agent_handle.clone(),
+                handle,
                 command_receiver,
                 event_emitter,
-                state: AgentState {
-                    definition: agent,
-                    messages: VecDeque::new(),
-                    paused: false,
-                },
+                state: AgentState::default(),
             }
-            .run(),
-        );
+            .run()
+        });
 
         let handle = agent_handle.clone();
         self.thread_join_set.spawn(async move {
@@ -121,19 +119,22 @@ impl Runtime {
     }
 
     pub async fn recv(&mut self) -> Result<AgentEvent, KepokiError> {
-        if let Some(stopped) = self.thread_join_set.try_join_next() {
-            let (agent, result) = stopped?;
-            return match result {
-                Ok(_) => Ok(AgentEvent::Completed(agent)),
-                Err(err) => Ok(AgentEvent::Terminated(err.to_string())),
-            };
+        if self.thread_join_set.is_empty() && self.recv_join_set.is_empty() {
+            return Err(KepokiError::NoRunningAgents);
         }
 
-        let (handle, output) = self
-            .recv_join_set
-            .join_next()
-            .await
-            .ok_or(KepokiError::NoRunningAgents)??;
+        let (handle, output) = select! {
+            join = self.thread_join_set.join_next(), if !self.thread_join_set.is_empty() => {
+                let (agent, result) = join.transpose()?.unwrap();
+                return Ok(match result {
+                    Ok(_) => AgentEvent::Completed(agent),
+                    Err(err) => AgentEvent::Terminated(err.to_string()),
+                });
+            }
+            recv = self.recv_join_set.join_next(), if !self.recv_join_set.is_empty() => {
+                recv.transpose()?.unwrap()
+            }
+        };
 
         let (mut event_receiver, event) =
             output.ok_or(KepokiError::AgentNotFound(handle.clone()))?;

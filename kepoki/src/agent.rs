@@ -47,7 +47,7 @@ impl Default for Agent {
             spec_version: SpecVersion::Latest,
             name: "conversational-agent".to_string(),
             description: "A simple conversational agent with no tools.".to_string(),
-            prompt: "You are a helpful assistant designed for basic knowledge tasks.".to_string(),
+            prompt: "You are a helpful assistant designed for basic knowledge tasks. Always respond even if it means asking for guidance.".to_string(),
             model_preferences: ModelPreferences::default(),
             temperature: Self::default_temperature(),
             mcp_servers: HashMap::new(),

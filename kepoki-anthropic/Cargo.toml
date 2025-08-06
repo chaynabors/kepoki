@@ -5,8 +5,10 @@ edition = "2024"
 
 [dependencies]
 anthropoki = { path = "../anthropoki" }
+futures = { version = "0.3.31", features = ["executor"] }
 kepoki = { path = "../kepoki" }
-smol = "2.0.2"
+tracing.workspace = true
 
 [dev-dependencies]
 tokio.workspace = true
+tracing-subscriber = { version = "0.3.19" }
