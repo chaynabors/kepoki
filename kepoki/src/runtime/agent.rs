@@ -30,6 +30,7 @@ pub enum AgentCommand {
     Unpause,
     Terminate,
     DumpState,
+    UserMessage(String),
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -69,21 +70,6 @@ pub struct AgentState {
     pub definition: crate::agent::Agent,
     pub messages: VecDeque<InputMessage>,
     pub paused: bool,
-}
-
-impl Default for AgentState {
-    fn default() -> Self {
-        Self {
-            definition: crate::agent::Agent::default(),
-            messages: VecDeque::from_iter([InputMessage {
-                role: Role::User,
-                content: vec![ContentBlock::Text {
-                    text: "You are a helpful assistant.".to_string(),
-                }],
-            }]),
-            paused: false,
-        }
-    }
 }
 
 pub struct Agent<B: Backend> {
@@ -252,6 +238,13 @@ impl<B: Backend> Agent<B> {
                 self.event_emitter
                     .send(AgentEvent::StateDump(Box::new(self.state.clone())))
                     .map_err(|_| KepokiError::EventReceiverClosed(self.handle.clone()))?;
+            }
+            AgentCommand::UserMessage(message) => {
+                tracing::info!("Received user message for agent {}", self.handle);
+                self.state.messages.push_back(InputMessage {
+                    role: Role::User,
+                    content: vec![ContentBlock::Text { text: message }],
+                });
             }
             command => {
                 unreachable!("Command not intercepted by the runtime: {command:?}")

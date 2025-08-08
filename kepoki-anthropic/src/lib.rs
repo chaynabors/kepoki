@@ -348,6 +348,9 @@ fn reverse_convert_message_delta(delta: anthropoki::MessageDelta) -> kepoki::bac
 
 #[cfg(test)]
 mod tests {
+    use kepoki::runtime::agent::AgentCommand;
+    use kepoki::runtime::agent::AgentEvent;
+
     use super::*;
 
     #[ignore]
@@ -360,12 +363,25 @@ mod tests {
         let mut runtime = kepoki::runtime::Runtime::new();
         let agent = runtime.spawn_agent(
             backend,
-            Model::ClaudeHaiku3_5,
-            kepoki::agent::Agent::default(),
+            Model::ClaudeSonnet3_5,
+            kepoki::agent::Agent {
+                prompt: "You are an agent that does everything for me without asking".into(),
+                ..Default::default()
+            },
         );
+
+        runtime
+            .send(
+                &agent,
+                AgentCommand::UserMessage("Hello! Who are you?".to_string()),
+            )
+            .unwrap();
 
         while let Ok(event) = runtime.recv().await {
             tracing::info!("Received event: {:?}", event);
+            if matches!(event, AgentEvent::Message(_)) {
+                break;
+            }
         }
     }
 }

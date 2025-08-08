@@ -74,7 +74,11 @@ impl Runtime {
                 handle,
                 command_receiver,
                 event_emitter,
-                state: AgentState::default(),
+                state: AgentState {
+                    definition: agent,
+                    messages: VecDeque::new(),
+                    paused: false,
+                },
             }
             .run()
         });

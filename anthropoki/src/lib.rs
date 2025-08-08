@@ -491,12 +491,10 @@ impl MessageStream {
         let mut lines_parsed = 0;
         let mut data = None;
         loop {
-            if let Some(at) = self.buf.iter().position(|&b| b == b'\n') {
+            while let Some(at) = self.buf.iter().position(|&b| b == b'\n') {
                 let line = self.buf.drain(..=at).collect::<Vec<u8>>();
                 let line = String::from_utf8_lossy(&line);
                 let line = line.trim();
-
-                tracing::error!("{:?}", line);
 
                 match lines_parsed {
                     0 => assert!(line.strip_prefix("event: ").is_some()),
@@ -507,7 +505,7 @@ impl MessageStream {
 
                 lines_parsed += 1;
                 lines_parsed %= 3;
-            };
+            }
 
             match self.stream.next().await {
                 Some(Ok(bytes)) => self.buf.extend_from_slice(&bytes),
