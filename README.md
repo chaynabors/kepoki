@@ -3,6 +3,13 @@
 A Rust framework for building AI agents and applications with multi-provider 
 support, streaming responses, and comprehensive tool integration.
 
+## Crates
+
+* **kepoki** - Core agent framework with runtime, backend abstraction, and tool integration. What this README is about.
+* **anthropoki** - Standalone Anthropic API client with streaming support
+* **kepoki-anthropic** - Anthropic backend adapter for the kepoki framework
+* **kepoki-bedrock** - AWS Bedrock backend adapter for the kepoki framework
+
 ## Features
 
 * **Multi-Provider Backends**: Support for Anthropic, AWS Bedrock, and other AI services through a unified interface
