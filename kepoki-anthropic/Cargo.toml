@@ -4,7 +4,7 @@ version = "0.2.0"
 edition = "2024"
 
 [dependencies]
-anthropoki = { version = "0.1.0", path = "../anthropoki" }
+anthropoki = { version = "0.2.0", path = "../anthropoki" }
 futures = { version = "0.3.31", features = ["executor"] }
 kepoki = { version = "0.2.0", path = "../kepoki" }
 tracing.workspace = true
