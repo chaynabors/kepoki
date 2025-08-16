@@ -1,12 +1,12 @@
 [package]
 name = "kepoki-anthropic"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 
 [dependencies]
-anthropoki = { path = "../anthropoki" }
+anthropoki = { version = "0.1.0", path = "../anthropoki" }
 futures = { version = "0.3.31", features = ["executor"] }
-kepoki = { path = "../kepoki" }
+kepoki = { version = "0.2.0", path = "../kepoki" }
 tracing.workspace = true
 
 [dev-dependencies]
