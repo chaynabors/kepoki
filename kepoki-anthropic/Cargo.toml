@@ -1,7 +1,11 @@
 [package]
 name = "kepoki-anthropic"
+description = "Anthropic adapter for Kepoki, a Rust library for building AI applications."
+authors = ["Chay Nabors (chaynabors@gmail.com)"]
 version = "0.2.0"
 edition = "2024"
+publish = true
+license = "MIT OR Apache-2.0"
 
 [dependencies]
 anthropoki = { version = "0.2.0", path = "../anthropoki" }
