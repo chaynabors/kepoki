@@ -43,7 +43,7 @@ enum McpServerInstance {
 struct LocalMcpServerInstance;
 
 impl LocalMcpServerInstance {
-    //pub async fn spawn(mcp_server: &LocalMcpServer) -> Result<Self, AgeneticError> {
+    //pub async fn spawn(mcp_server: &LocalMcpServer) -> Result<Self, KepokiError> {
     //    tracing::info!("Spawning local MCP server: {}", mcp_server.command);
     //    let mut command = Command::new(mcp_server.command);
     //    command.args(mcp_server.args).envs(mcp_server.env);
