@@ -1,7 +1,8 @@
 use std::borrow::Cow;
 
 use anthropoki::AnthropicClient;
-use anthropoki::ApiVersion;
+pub use anthropoki::AnthropicError;
+pub use anthropoki::ApiVersion;
 use anthropoki::MessagesRequestBody;
 use anthropoki::Model;
 use anthropoki::ToolChoice as AnthropicToolChoice;
