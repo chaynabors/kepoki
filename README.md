@@ -132,12 +132,12 @@ runtime.send(&review_agent, AgentCommand::UserMessage("Review this code".to_stri
 ## Backends
 
 ### Anthropic
-```toml
+```bash
 cargo add kepoki-anthropic
 ```
 
 ### AWS Bedrock
-```toml
+```bash
 cargo add kepoki-bedrock
 ```
 
