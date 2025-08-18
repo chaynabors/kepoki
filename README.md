@@ -110,6 +110,8 @@ while let Ok(event) = runtime.recv().await {
 
 ## Multi-Agent Communication
 
+TODO: A2A
+
 ```rust
 let code_agent = runtime.spawn_agent(backend.clone(), model, Agent {
     name: "coder".to_string(),
