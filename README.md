@@ -1,7 +1,7 @@
 # Kepoki
 
 A Rust framework for building AI agents and applications with multi-provider 
-support, streaming responses, and comprehensive tool integration.
+support, streaming responses, and comprehensive tool support.
 
 ## Crates
 
@@ -23,11 +23,11 @@ support, streaming responses, and comprehensive tool integration.
 
 Add to your Cargo.toml:
 
-toml
+```toml
 [dependencies]
 kepoki = "0.2.0"
-kepoki-anthropic = "0.1.0"  # or kepoki-bedrock
-
+kepoki-anthropic = "0.2.0"
+```
 
 Basic usage:
 
@@ -133,12 +133,12 @@ runtime.send(&review_agent, AgentCommand::UserMessage("Review this code".to_stri
 
 ### Anthropic
 ```toml
-kepoki-anthropic = "0.1.0"
+cargo add kepoki-anthropic
 ```
 
 ### AWS Bedrock
 ```toml
-kepoki-bedrock = "0.1.0"
+cargo add kepoki-bedrock
 ```
 
 ## Tools and MCP
