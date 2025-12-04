@@ -4,12 +4,12 @@ use std::pin::Pin;
 
 use bytes::Bytes;
 use futures_util::StreamExt;
-use serde::Deserialize;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, Default, Deserialize, Serialize)]
 pub enum ApiVersion {
+    #[default]
     Latest,
     #[serde(rename = "2023-06-01")]
     V2023_06_01,
@@ -29,6 +29,14 @@ impl AsRef<str> for ApiVersion {
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 pub enum Model {
+    #[serde(rename = "claude-sonnet-4-5-20250929")]
+    ClaudeSonnet4_5,
+    #[serde(rename = "claude-haiku-4-5-20251001")]
+    ClaudeHaiku4_5,
+    #[serde(rename = "claude-opus-4-5-20251101")]
+    ClaudeOpus4_5,
+    #[serde(rename = "claude-opus-4-1-20250805")]
+    ClaudeOpus4_1,
     #[serde(rename = "claude-opus-4-20250514")]
     ClaudeOpus4,
     #[serde(rename = "claude-sonnet-4-20250514")]
@@ -223,29 +231,51 @@ pub enum ImageMediaType {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[allow(clippy::manual_non_exhaustive)]
 pub struct InputMessage {
     pub role: Role,
     pub content: Content,
+    #[serde(skip)]
+    pub _ne: (),
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+impl Default for InputMessage {
+    fn default() -> Self {
+        Self {
+            role: Role::User,
+            content: Content::String(String::new()),
+            _ne: (),
+        }
+    }
+}
+
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+#[allow(clippy::manual_non_exhaustive)]
 pub struct McpServer {
     pub name: String,
     pub url: String,
     pub authorization_token: Option<String>,
     pub tool_configuration: Option<ToolConfiguration>,
+    #[serde(skip)]
+    _ne: (),
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+#[allow(clippy::manual_non_exhaustive)]
 pub struct ToolConfiguration {
     pub allowed_tools: Option<Vec<String>>,
     pub enabled: Option<bool>,
+    #[serde(skip)]
+    _ne: (),
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+#[allow(clippy::manual_non_exhaustive)]
 pub struct Metadata<'a> {
     /// An external identifier for the user who is associated with the request.
     pub user_id: Option<Cow<'a, str>>,
+    #[serde(skip)]
+    _ne: (),
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
@@ -282,6 +312,7 @@ pub enum ToolChoice {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[allow(clippy::manual_non_exhaustive)]
 pub struct Tool<'a> {
     /// Name of the tool.
     pub name: Cow<'a, str>,
@@ -291,21 +322,54 @@ pub struct Tool<'a> {
     pub description: Option<Cow<'a, str>>,
     /// Create a cache control breakpoint at this content block.
     pub cache_control: Option<CacheControl>,
+    #[serde(skip)]
+    pub _ne: (),
+}
+
+impl Default for Tool<'_> {
+    fn default() -> Self {
+        Self {
+            name: Cow::Borrowed(""),
+            input_schema: None,
+            description: None,
+            cache_control: None,
+            _ne: (),
+        }
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[allow(clippy::manual_non_exhaustive)]
 pub struct MessagesRequest<'a> {
     /// Optional header to specify the beta version(s) you want to use.
+    #[serde(skip)]
     pub anthropic_beta: Option<Vec<Cow<'a, str>>>,
     /// The version of the Anthropic API you want to use.
+    #[serde(skip)]
     pub anthropic_version: ApiVersion,
     /// Your unique API key for authentication.
+    #[serde(skip)]
     pub x_api_key: Cow<'a, str>,
     /// The body of the request.
     pub body: MessagesRequestBody<'a>,
+    #[serde(skip)]
+    pub _ne: (),
+}
+
+impl Default for MessagesRequest<'_> {
+    fn default() -> Self {
+        MessagesRequest {
+            anthropic_beta: None,
+            anthropic_version: ApiVersion::Latest,
+            x_api_key: "".into(),
+            body: MessagesRequestBody::default(),
+            _ne: (),
+        }
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[allow(clippy::manual_non_exhaustive)]
 pub struct MessagesRequestBody<'a> {
     /// The model that will complete your prompt.
     pub model: Model,
@@ -351,12 +415,14 @@ pub struct MessagesRequestBody<'a> {
     /// Use nucleus sampling.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub top_p: Option<f32>,
+    #[serde(skip)]
+    pub _ne: (),
 }
 
 impl Default for MessagesRequestBody<'_> {
     fn default() -> Self {
         MessagesRequestBody {
-            model: Model::ClaudeSonnet3_5,
+            model: Model::ClaudeSonnet4_5,
             messages: vec![],
             max_tokens: 2048,
             container: None,
@@ -372,6 +438,7 @@ impl Default for MessagesRequestBody<'_> {
             tools: None,
             top_k: None,
             top_p: None,
+            _ne: (),
         }
     }
 }
@@ -385,6 +452,7 @@ pub enum MessagesResponse {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[allow(clippy::manual_non_exhaustive)]
 pub struct Message {
     /// Unique object identifier.
     pub id: String,
@@ -400,14 +468,33 @@ pub struct Message {
     pub stop_sequence: Option<String>,
     // TODO: usage
     // TODO: container
+    #[serde(skip)]
+    _ne: (),
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+impl Default for Message {
+    fn default() -> Self {
+        Self {
+            id: String::new(),
+            role: Role::Assistant,
+            content: Content::String(String::new()),
+            model: Model::ClaudeSonnet3_5,
+            stop_reason: None,
+            stop_sequence: None,
+            _ne: (),
+        }
+    }
+}
+
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+#[allow(clippy::manual_non_exhaustive)]
 pub struct MessageDelta {
     /// The reason that we stopped.
     pub stop_reason: Option<StopReason>,
     /// Which custom stop sequence was generated, if any.
     pub stop_sequence: Option<String>,
+    #[serde(skip)]
+    _ne: (),
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
@@ -454,6 +541,10 @@ pub enum MessagesResponseEvent {
 
 #[derive(Debug, Error)]
 pub enum AnthropicError {
+    #[error("You must set stream to false to use messages")]
+    StreamEnabled,
+    #[error("You must set stream to true to use messages_stream")]
+    StreamNotEnabled,
     #[error(transparent)]
     Reqwest(#[from] reqwest::Error),
     #[error(transparent)]
@@ -462,9 +553,12 @@ pub enum AnthropicError {
     Api(#[from] ApiError),
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+#[allow(clippy::manual_non_exhaustive)]
 pub struct ApiError {
     pub error: ApiErrorDetails,
+    #[serde(skip)]
+    _ne: (),
 }
 
 impl Display for ApiError {
@@ -473,10 +567,13 @@ impl Display for ApiError {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+#[allow(clippy::manual_non_exhaustive)]
 pub struct ApiErrorDetails {
     pub r#type: String,
     pub message: String,
+    #[serde(skip)]
+    _ne: (),
 }
 
 impl std::error::Error for ApiError {}
@@ -530,6 +627,10 @@ impl AnthropicClient {
 
     /// Send a structured list of input messages with text and/or image content, and the model will generate the next message in the conversation.
     pub async fn messages(&self, request: &MessagesRequest<'_>) -> Result<Message, AnthropicError> {
+        if request.body.stream {
+            return Err(AnthropicError::StreamEnabled);
+        }
+
         let mut post = self.client.post("https://api.anthropic.com/v1/messages");
 
         if let Some(beta) = &request.anthropic_beta {
@@ -554,6 +655,10 @@ impl AnthropicClient {
         &self,
         request: &MessagesRequest<'_>,
     ) -> Result<MessageStream, AnthropicError> {
+        if !request.body.stream {
+            return Err(AnthropicError::StreamNotEnabled);
+        }
+
         let mut post = self.client.post("https://api.anthropic.com/v1/messages");
 
         if let Some(beta) = &request.anthropic_beta {
@@ -566,6 +671,23 @@ impl AnthropicClient {
             .body(serde_json::to_string(&request.body)?)
             .send()
             .await?;
+
+        let status = response.status();
+        if !status.is_success() {
+            let error_text = response.text().await?;
+            if let Ok(api_error) = serde_json::from_str::<ApiError>(&error_text) {
+                return Err(AnthropicError::Api(api_error));
+            }
+
+            return Err(AnthropicError::Api(ApiError {
+                error: ApiErrorDetails {
+                    r#type: format!("http_error_{}", status.as_u16()),
+                    message: error_text,
+                    ..Default::default()
+                },
+                ..Default::default()
+            }));
+        }
 
         Ok(MessageStream {
             stream: Box::pin(response.bytes_stream()),
@@ -591,9 +713,11 @@ mod tests {
                     messages: vec![InputMessage {
                         role: Role::User,
                         content: Content::String("Hello, how are you?".to_string()),
+                        ..Default::default()
                     }],
                     ..Default::default()
                 },
+                ..Default::default()
             })
             .await
             .unwrap();
@@ -614,10 +738,12 @@ mod tests {
                     messages: vec![InputMessage {
                         role: Role::User,
                         content: Content::String("Hello, how are you?".to_string()),
+                        ..Default::default()
                     }],
                     stream: true,
                     ..Default::default()
                 },
+                ..Default::default()
             })
             .await
             .unwrap();

@@ -1,11 +1,6 @@
 [workspace]
 resolver = "3"
-members = [
-    "anthropoki",
-    "kepoki",
-    "kepoki-anthropic", "kepoki-bedrock",
-    "kepoki-mcp",
-]
+members = ["anthropoki", "kepoki", "kepoki-anthropic", "kepoki-bedrock"]
 
 [workspace.dependencies]
 anthropoki = { path = "anthropoki" }
